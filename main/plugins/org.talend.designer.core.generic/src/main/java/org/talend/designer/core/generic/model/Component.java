@@ -1447,6 +1447,7 @@ public class Component extends AbstractBasicComponent {
                         @Override
                         public void setup(Object properties) {
                             ((Properties) properties).setValueEvaluator(new ComponentContextPropertyValueEvaluator(node));
+                            ComponentsUtils.getComponentService().postDeserialize(((Properties) properties));
                         }
 
                     }).object);
