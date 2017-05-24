@@ -16,6 +16,7 @@ imports="
   org.talend.core.model.process.IConnectionCategory
   org.talend.core.model.process.BlockCode
   java.util.Map
+  java.util.AbstractMap
   java.util.List
   java.util.Set
   java.util.HashSet
@@ -67,7 +68,14 @@ Set<String> inputCols = new HashSet<String>();
 String inputConnName = null;
 %>
 	java.util.List<String> paraList_<%=cid %> = new java.util.ArrayList<String>();
+
 	<%
+	if (useIndependentProcess) {
+	%>
+		java.util.List<ProcessUtil.ContextArg> contextArgs_<%=cid %> = new java.util.ArrayList<ProcessUtil.ContextArg>();
+	<%
+	}
+	
 	//For TDI-28558
 
 	List<IMetadataColumn> inputMetadataColumn = new java.util.ArrayList<IMetadataColumn>();
@@ -161,7 +169,6 @@ String inputConnName = null;
 			}
 		} catch (ProcessorException e) {
 		}
-
 
 		if (!useIndependentProcess) {
 			for (int i = 0; i < commandLine.length; i++) {
@@ -317,7 +324,11 @@ String inputConnName = null;
 			String ctxParamName = ctxParam.getName();
  			%>
 			parentContextMap_<%=cid %>.put("<%=ctxParamName %>", <%=localContext%>.<%=ctxParamName %>);
-			paraList_<%=cid %>.add("--context_type " + "<%=ctxParam.getName()%>" + "=" + "<%=ctxParam.getType()%>");
+			<%if(useIndependentProcess){%>
+				contextArgs_<%=cid %>.add(new ProcessUtil.ContextArg("context_type", "<%=ctxParam.getName()%>", "<%=ctxParam.getType()%>"));
+			<%} else {%>
+				paraList_<%=cid %>.add("--context_type " + "<%=ctxParam.getName()%>" + "=" + "<%=ctxParam.getType()%>");
+			<%}%>
 		<%
 		}
 		%> 
@@ -326,9 +337,17 @@ String inputConnName = null;
 			String key_<%=cid %> = (String) propertyNames_<%=cid %>.nextElement();
 			Object value_<%=cid %> = (Object) <%=localContext%>.get(key_<%=cid %>);
 			if(value_<%=cid %>!=null) {  
-				paraList_<%=cid %>.add("--context_param " + key_<%=cid %> + "=" + value_<%=cid %>);
+				<%if(useIndependentProcess){%>
+					contextArgs_<%=cid %>.add(new ProcessUtil.ContextArg("context_param", key_<%=cid %>, String.valueOf(value_<%=cid %>)));
+				<%} else {%>
+					paraList_<%=cid %>.add("--context_param " + key_<%=cid %> + "=" + value_<%=cid %>);
+				<%}%>
 			} else {
-				paraList_<%=cid %>.add("--context_param " + key_<%=cid %> + "=" + NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY);
+				<%if(useIndependentProcess){%>
+					contextArgs_<%=cid %>.add(new ProcessUtil.ContextArg("context_param", key_<%=cid %>, NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY));
+				<%} else {%>
+					paraList_<%=cid %>.add("--context_param " + key_<%=cid %> + "=" + NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY);
+				<%}%>
 			}
 			<%
 			if(printParameter) {
@@ -360,9 +379,17 @@ String inputConnName = null;
 		%>
 		obj_<%=cid%> = <%=value %>;
 		if(obj_<%=cid%>!=null) {
-			paraList_<%=cid %>.add("--context_param <%=name %>=" + RuntimeUtils.tRunJobConvertContext(obj_<%=cid%>));
+			<%if(useIndependentProcess){%>
+				contextArgs_<%=cid %>.add(new ProcessUtil.ContextArg("context_param", "<%=name %>", String.valueOf(RuntimeUtils.tRunJobConvertContext(obj_<%=cid%>))));
+			<%} else {%>
+				paraList_<%=cid %>.add("--context_param <%=name %>=" + RuntimeUtils.tRunJobConvertContext(obj_<%=cid%>));
+			<%}%>
 		} else {
-			paraList_<%=cid %>.add("--context_param <%=name %>=" + NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY);
+			<%if(useIndependentProcess){%>
+				contextArgs_<%=cid %>.add(new ProcessUtil.ContextArg("context_param", "<%=name %>", NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY));
+			<%} else {%>
+				paraList_<%=cid %>.add("--context_param <%=name %>=" + NULL_VALUE_EXPRESSION_IN_COMMAND_STRING_FOR_CHILD_JOB_ONLY);
+			<%}%>
 		}
 		<% if(printParameter){ %>
 		if(parametersToEncrypt_<%=cid %> .contains("<%=name %>") && obj_<%=cid%> != null) {
@@ -374,7 +401,14 @@ String inputConnName = null;
 		parentContextMap_<%=cid %>.put("<%=name %>", obj_<%=cid%>);
 	<%
 	}
+	
+	if (useIndependentProcess) {
 	%>
+		java.io.File contextArgsFile_<%=cid %> = ProcessUtil.writeContextArgsToFile(contextArgs_<%=cid %>);
+		contextArgsFile_<%=cid %>.deleteOnExit();
+		paraList_<%=cid %>.add("--context_args_file=" + contextArgsFile_<%=cid%>.getPath());
+	<%}%>
+	
 	<%if(printParameter){%>
 		System.out.println("<%=cid %> in <%=currentProcess.getName() %> call <%if(!useDynamicJob){%><%=childJob %><%}else{%>"+<%=dynamicJobName%>+"<%}%> with:\n\n" + paraListForLog_<%=cid %> + "\n");
 	<%
