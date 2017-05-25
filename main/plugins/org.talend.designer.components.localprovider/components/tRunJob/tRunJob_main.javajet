@@ -600,7 +600,11 @@ String inputConnName = null;
 		int result_<%=cid %> = ps_<%=cid %>.waitFor();
 		normal_<%=cid %>.join(10000);
 		error_<%=cid %>.join(10000);
-  
+
+		if (contextArgsFile_<%=cid %> != null && contextArgsFile_<%=cid %>.exists()) {
+			contextArgsFile_<%=cid %>.delete();
+		}
+		
 		globalMap.put("<%=cid %>_CHILD_RETURN_CODE",result_<%=cid %>);
 		if(result_<%=cid %> != 0){
    			globalMap.put("<%=cid %>_CHILD_EXCEPTION_STACKTRACE",errorMsg_<%=cid %>.toString());
